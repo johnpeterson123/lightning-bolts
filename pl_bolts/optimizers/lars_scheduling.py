@@ -4,6 +4,8 @@ References:
     - https://arxiv.org/pdf/1708.03888.pdf
     - https://github.com/noahgolmant/pytorch-lars/blob/master/lars.py
 """
+from typing import Any, Callable, Dict, List, Optional
+
 import torch
 from torch.optim import Optimizer
 
@@ -13,7 +15,7 @@ class LARSWrapper(object):
     Wrapper that adds LARS scheduling to any optimizer. This helps stability with huge batch sizes.
     """
 
-    def __init__(self, optimizer, eta=0.02, clip=True, eps=1e-8):
+    def __init__(self, optimizer: Optimizer, eta: float = 0.02, clip: bool = True, eps: float = 1e-8) -> None:
         """
         Args:
             optimizer: torch optimizer
@@ -32,35 +34,35 @@ class LARSWrapper(object):
         self.zero_grad = self.optim.zero_grad
         self.add_param_group = self.optim.add_param_group
         self.__setstate__ = self.optim.__setstate__
-        self.__getstate__ = self.optim.__getstate__
-        self.__repr__ = self.optim.__repr__
+        self.__getstate__ = self.optim.__getstate__  # type: ignore[attr-defined]
+        self.__repr__ = self.optim.__repr__  # type: ignore[assignment]
 
     @property
-    def defaults(self):
+    def defaults(self) -> Dict[str, Any]:
         return self.optim.defaults
 
     @defaults.setter
-    def defaults(self, defaults):
+    def defaults(self, defaults: Dict[str, Any]) -> None:
         self.optim.defaults = defaults
 
-    @property
-    def __class__(self):
+    @property  # type: ignore[misc]
+    def __class__(self):  # type: ignore
         return Optimizer
 
     @property
-    def state(self):
+    def state(self) -> Dict[Any, Any]:
         return self.optim.state
 
     @property
-    def param_groups(self):
+    def param_groups(self) -> List[Dict[str, Any]]:
         return self.optim.param_groups
 
     @param_groups.setter
-    def param_groups(self, value):
+    def param_groups(self, value: Any) -> None:
         self.optim.param_groups = value
 
     @torch.no_grad()
-    def step(self, closure=None):
+    def step(self, closure: Optional[Callable[[], float]] = None) -> None:
         weight_decays = []
 
         for group in self.optim.param_groups:
@@ -71,7 +73,7 @@ class LARSWrapper(object):
             group['weight_decay'] = 0
 
             # update the parameters
-            [self.update_p(p, group, weight_decay) for p in group['params'] if p.grad is not None]
+            [self.update_p(p, group, weight_decay) for p in group['params'] if p.grad is not None]  # type: ignore
 
         # update the optimizer
         self.optim.step(closure=closure)
@@ -80,7 +82,7 @@ class LARSWrapper(object):
         for group_idx, group in enumerate(self.optim.param_groups):
             group['weight_decay'] = weight_decays[group_idx]
 
-    def update_p(self, p, group, weight_decay):
+    def update_p(self, p: torch.Tensor, group: Dict[str, Any], weight_decay: float) -> None:
         # calculate new norms
         p_norm = torch.norm(p.data)
         g_norm = torch.norm(p.grad.data)
